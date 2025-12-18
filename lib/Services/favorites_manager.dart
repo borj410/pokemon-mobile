@@ -6,17 +6,40 @@ import 'package:flutter/foundation.dart';
 // import de datamodel
 import '../DataModel/pokemon.dart';
 
+// import de shared preferences para almacenar IDs de favoritos
+import 'package:pokemon_mobile_flutter/Services/shared_preferences.dart';
+
+import 'pokemon_service.dart';
+
 class FavoritesManager extends ChangeNotifier {
+  final PrefsService _prefs = PrefsService();
+  final PokemonService _api = PokemonService();
+
   // set de IDs para búsqueda rápida (usado para comprobaciones de estado)
   final Set<int> _favoritePokemonIds = {};
 
   // lista de objetos Pokemon para visualización detallada
   final List<Pokemon> _favoritePokemonList = [];
 
+  List<Pokemon> get favoritePokemonList => _favoritePokemonList;
+
   // getters públicos
   // obtener la lista de pokemones favoritos
   // devuelve los datos completos de cada pokemon favorito
-  List<Pokemon> get favoritePokemonList => _favoritePokemonList;
+  Future<void> loadFavorites() async {
+    final savedIds = await _prefs.getFavorites();
+    _favoritePokemonIds.addAll(savedIds);
+
+    if (_favoritePokemonIds.isNotEmpty) {
+      for (int id in _favoritePokemonIds) {
+        try {
+          final p = await _api.fetchPokemon(id);
+          _favoritePokemonList.add(p);
+        } catch (e) { /* Manejar error de red */ }
+      }
+    }
+    notifyListeners();
+  }
 
   // obtener el estado de favorito de un pokemon
   // más rápido que comparar IDs de la lista detallada
@@ -24,39 +47,19 @@ class FavoritesManager extends ChangeNotifier {
 
   // agregar un pokemon a favoritos
   // actualiza tanto el set como la lista con la información del pokemon
-  void addFavorite(Pokemon pokemon) {
+  void toggleFavorite(Pokemon pokemon) async {
     // verificación de que el pokemon no se encuentra en la lista
-    if (!_favoritePokemonIds.contains(pokemon.id)) {
-      _favoritePokemonIds.add(pokemon.id);
-      _favoritePokemonList.add(pokemon);
-
-      // notifica a los oyentes
-      notifyListeners();
-    }
-  }
-
-  // quitar un pokemon de favoritos
-  // elimina la información del pokemon tanto en el set como en la lista
-  void removeFavorite(Pokemon pokemon) {
-    // verificacion de que el pokemon sí se encuentra en la lista
-    if (_favoritePokemonIds.contains(pokemon.id)) {
+    if (isFavorite(pokemon)) {
       _favoritePokemonIds.remove(pokemon.id);
       _favoritePokemonList.removeWhere((p) => p.id == pokemon.id);
-
-      // notifica a los oyentes
-      notifyListeners();
-    }
-  }
-
-  // alternar estado de favorito para un pokemon en específico
-  // lógica usada por el botón de favorito
-  void toggleFavorite(Pokemon pokemon) {
-    // si es favorito, lo elimina de la lista
-    if (isFavorite(pokemon)) {
-      removeFavorite(pokemon);
     } else {
-      // si no es favorito, lo agrega a la lista
-      addFavorite(pokemon);
+      _favoritePokemonIds.add(pokemon.id);
+      _favoritePokemonList.add(pokemon);
     }
+    // guardar lista de IDs favoritos
+    await _prefs.saveFavorites(_favoritePokemonIds.toList());
+
+    // notificar a los oyentes
+    notifyListeners();
   }
 }

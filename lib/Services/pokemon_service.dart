@@ -28,7 +28,7 @@ class PokemonService {
     // bucle ajustado: va desde startId hasta startId + count - 1
     for (int i = startId; i < startId + count; i++) {
       if (i > _maxPokemonId) break;
-      fetchFutures.add(_fetchPokemon(i)); // se añaden Futures a la lista
+      fetchFutures.add(fetchPokemon(i)); // se añaden Futures a la lista
     }
 
     // await Future.wait sirve para esperar a que todas las peticiones terminen
@@ -39,7 +39,7 @@ class PokemonService {
 
   // obtener un pokémon por id
   // utiliza la url base y una id específica
-  Future<Pokemon> _fetchPokemon(int id) async {
+  Future<Pokemon> fetchPokemon(int id) async {
     // convierte el string de la Url con id en un objeto Uri (usado por http)
     // await http.get espera la respuesta del servidor
     final response = await http.get(Uri.parse('$_baseUrl$id'));
@@ -60,7 +60,7 @@ class PokemonService {
   Future<Pokemon> fetchRandomPokemon() async {
     // final: propiedad inmutable
     final int randomId = 1 + Random().nextInt(_maxPokemonId); // id aleatorio entre 1 y el máximo
-    return _fetchPokemon(randomId);
+    return fetchPokemon(randomId);
   }
 
   // usado en SearchScreen
